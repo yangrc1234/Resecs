@@ -309,6 +309,8 @@ namespace Resecs {
 		int generation[entityPoolSize];
 		/* Whether the entity is active. */
 		bool alive[entityPoolSize];
+		/* The position last entity was created */
+		uint32_t entityCreationPtr = 0;
 
 	public:
 		/* Check if the entity is alive. */
@@ -344,9 +346,11 @@ namespace Resecs {
 		*/
 		Entity CreateEntity() {
 			for (int i = 0; i < entityPoolSize; i++) {
-				if (!alive[i]) {
-					alive[i] = true;
-					auto id = EntityID(i, generation[i]);
+				auto index = (i + entityCreationPtr) % entityPoolSize;
+				if (!alive[index]) {
+					entityCreationPtr = index+1;
+					alive[index] = true;
+					auto id = EntityID(index, generation[index]);
 					OnEntityCreated.Invoke(id);
 					currentEntities.push_back(id);
 					return GetEntityHandle(id);
