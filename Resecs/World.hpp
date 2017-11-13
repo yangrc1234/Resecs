@@ -4,6 +4,7 @@
 #include <functional>
 #include <list>
 #include <unordered_set>
+#include <exception>
 
 #include "Signal.hpp"
 #include "Component.hpp"
@@ -106,7 +107,7 @@ namespace Resecs {
 			TComp* Set(const TArgs&... args) {
 				static_assert(!std::is_base_of<ISingletonComponent, TComp>::value, "Can't access singleton component from an entity handle");
 				if (!isAlive()) {
-					throw exception("Entity is already destroyed!");
+					throw std::logic_error("Entity is already destroyed!");
 				}
 				return world->SetComponent<TComp, TArgs...>(this->entityID.index, args...);
 			}
@@ -116,10 +117,10 @@ namespace Resecs {
 			void Remove() {
 				static_assert(!std::is_base_of<ISingletonComponent, TComp>::value, "Can't access singleton component from an entity handle");
 				if (!isAlive()) {
-					throw exception("Entity is already destroyed!");
+					throw std::logic_error("Entity is already destroyed!");
 				}
 				if (!world->HasComponent<TComp>(this->entityID.index)) {
-					throw exception("Entity doesn't have this component");
+					throw std::logic_error("Entity doesn't have this component");
 				}
 				world->RemoveComponent<TComp>(this->entityID.index);
 			}
@@ -129,7 +130,7 @@ namespace Resecs {
 			bool Has() {
 				static_assert(!std::is_base_of<ISingletonComponent, TComp>::value, "Can't access singleton component from an entity handle");
 				if (!isAlive()) {
-					throw exception("Entity is already destroyed!");
+					throw std::logic_error("Entity is already destroyed!");
 				}
 				return world->HasComponent<TComp>(this->entityID.index);
 			}
@@ -139,10 +140,10 @@ namespace Resecs {
 			TComp* Get() {
 				static_assert(!std::is_base_of<ISingletonComponent, TComp>::value, "Can't access singleton component from an entity handle");
 				if (!isAlive()) {
-					throw exception("Entity is already destroyed!");
+					throw std::logic_error("Entity is already destroyed!");
 				}
 				if (!world->HasComponent<TComp>(this->entityID.index)) {
-					throw exception("Entity doesn't have this component");
+					throw std::logic_error("Entity doesn't have this component");
 				}
 				return world->GetComponent<TComp>(this->entityID.index);
 			}
@@ -150,7 +151,7 @@ namespace Resecs {
 			/* Destroy the entity.*/
 			void Destroy() {
 				if (!isAlive()) {
-					throw exception("Entity is already destroyed!");
+					throw std::logic_error("Entity is already destroyed!");
 				}
 				world->DestroyEntity(this->entityID);
 			}
@@ -234,8 +235,8 @@ namespace Resecs {
 		public:
 			Group(World* world) :
 				world(world),
-				added(world->OnComponentAddedListeners.Connect(std::bind(&Group::Added, this, placeholders::_1, placeholders::_2))),
-				removed(world->OnComponentRemovedListeners.Connect(std::bind(&Group::Removed, this, placeholders::_1, placeholders::_2))) {
+				added(world->OnComponentAddedListeners.Connect(std::bind(&Group::Added, this, std::placeholders::_1, std::placeholders::_2))),
+				removed(world->OnComponentRemovedListeners.Connect(std::bind(&Group::Removed, this, std::placeholders::_1, std::placeholders::_2))) {
 				Initialize();
 			}
 
@@ -328,7 +329,7 @@ namespace Resecs {
 			if (alive[id]) {
 				return GetEntityHandle(EntityID(id, generation[id]));
 			}
-			throw exception("The entity is destroyed! Use CheckEntityAlive() before GetEntityHandle()!");
+			throw std::exception("The entity is destroyed! Use CheckEntityAlive() before GetEntityHandle()!");
 		}
 
 		/* Get the handle of an Entity using EntityID
@@ -338,7 +339,7 @@ namespace Resecs {
 			if (alive[id.index] && generation[id.index] == id.generation) {
 				return Entity(this,id);
 			}
-			throw exception("The entity is destroyed! Use CheckEntityAlive() before GetEntityHandle()!");
+			throw std::logic_error("The entity is destroyed! Use CheckEntityAlive() before GetEntityHandle()!");
 		}
 
 		/* Create an entity.
@@ -356,7 +357,7 @@ namespace Resecs {
 					return GetEntityHandle(id);
 				}
 			}
-			throw exception("Entity pool overflow!");
+			throw std::logic_error("Entity pool overflow!");
 		}
 
 		/*
@@ -416,7 +417,7 @@ namespace Resecs {
 		void Print() {
 			for (int i = 0; i < entityPoolSize; i++) {
 				if (alive[i]) {
-					cout << "Entity " << i << ": " << endl;
+					std::cout << "Entity " << i << ": " << std::endl;
 					PrintEntity<0, TComps...>(i);
 				}
 			}
@@ -425,10 +426,10 @@ namespace Resecs {
 	private:
 		void DestroyEntity(EntityID id) {
 			if (!CheckEntityAlive(id)) {
-				throw exception("The entity is already destroyed!");
+				throw std::logic_error("The entity is already destroyed!");
 			}
 			if (id.index == 0) {
-				throw exception("Destroying singleton entity is not allowed!");
+				throw std::logic_error("Destroying singleton entity is not allowed!");
 			}
 			OnEntityDestroyed.Invoke(id);
 			DestroyEntity<TComps...>(id.index);
@@ -492,7 +493,7 @@ namespace Resecs {
 		void PrintEntity(EntityIndex_t entity) {
 			T* ptr = static_cast<T*>(components[TCompIndex]);
 			if (ptr[entity].actived) {
-				cout << "Component " << TCompIndex << " Actived" << endl;
+				std::cout << "Component " << TCompIndex << " Actived" << std::endl;
 			}
 		}
 

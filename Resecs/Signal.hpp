@@ -1,6 +1,7 @@
 #pragma once
 #include <utility>
 #include <list>
+#include <memory>
 
 namespace Resecs {
 
@@ -9,7 +10,7 @@ namespace Resecs {
 	class Signal {
 	public:
 		using Callback = std::function<void(TFuncArgs...)>;
-		Signal() : survivePtr(make_shared<int>(0)) {
+		Signal() : survivePtr(std::make_shared<int>(0)) {
 		}
 		/* Connection class.
 		Disconnect() will be called automatically once it's out of scope.

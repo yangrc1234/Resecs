@@ -32,13 +32,13 @@ So EntityID could be used as key of unordered_set
 */
 namespace std {
 	template <>
-	struct std::hash<Resecs::EntityID> {
+	struct hash<Resecs::EntityID> {
 		size_t operator()(const Resecs::EntityID& k) const {
 			// Compute individual hash values for first, second and third
 			// http://stackoverflow.com/a/1646913/126995
 			size_t res = 17;
-			res = res * 31 + std::hash<Resecs::EntityIndex_t>()(k.index);
-			res = res * 31 + std::hash<int>()(k.generation);
+			res = res * 31 + hash<Resecs::EntityIndex_t>()(k.index);
+			res = res * 31 + hash<int>()(k.generation);
 			return res;
 		}
 	};
