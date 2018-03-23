@@ -6,7 +6,7 @@ include_directories(${Resecs_SOURCE_DIR}/..)
 source_group("Source Files" FILES ${HEADERS} ${SOURCES})
 
 add_subdirectory("deps/googletest")
-set(gtest_force_shared_crt OFF CACHE BOOL "" FORCE)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCES})

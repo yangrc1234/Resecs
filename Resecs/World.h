@@ -10,6 +10,7 @@
 #include <bitset>
 
 #include "Utils\Signal.hpp"
+#include "Utils\Common.hpp"
 #include "Component.hpp"
 #include "EntityID.hpp"
 #include "ComponentManager.h"
@@ -32,8 +33,14 @@ namespace Resecs {
 	/* main interface. */
 	public:
 		friend Entity;
+		World():
+			m_componentActivationTable(1024),
+			m_generation(1024),
+			m_possibleAliveEntities(1024)
+		{
+
+		}
 		Entity Create() {
-			int startIndex = m_creationIndex;
 			int loopCount = 0;
 			while (m_alive[m_creationIndex])
 			{
@@ -41,14 +48,15 @@ namespace Resecs {
 					throw std::overflow_error("Max entity count reached!!!");
 				}
 				m_creationIndex = (m_creationIndex + 1) % MAX_ENTITY_COUNT;
-				resizeEntityPoolIfNecessary(m_creationIndex + 1);
 			}
-			resizeEntityPoolIfNecessary(m_creationIndex + 1);
+			EnlargeVectorToFit(m_generation, m_creationIndex);
+			EnlargeVectorToFit(m_componentActivationTable, m_creationIndex);
 
 			m_alive[m_creationIndex] = true;
 			auto entityID = EntityID(m_creationIndex, m_generation[m_creationIndex]);
 			m_possibleAliveEntities.push_back(entityID);
 			m_aliveEntityCount++;
+			m_componentActivationTable[entityID.index].reset();	//clean activation table.
 			return Entity(this, entityID);
 		}
 		template <typename T>
@@ -107,15 +115,11 @@ namespace Resecs {
 			m_generation[id.index]++;
 			m_alive[id.index] = false;
 			m_aliveEntityCount--;
+			//Clean activation table is done in Create()
 		}
 		std::vector<int> m_generation;
 		std::bitset<MAX_ENTITY_COUNT> m_alive;
 		size_t m_creationIndex = 0;
-		void resizeEntityPoolIfNecessary(int newSize) {
-			if (m_generation.size() < newSize) {
-				m_generation.resize(newSize * 1.5f);
-			}
-		}
 		int m_aliveEntityCount = 0;
 		std::vector<EntityID> m_possibleAliveEntities;
 	
@@ -128,6 +132,7 @@ namespace Resecs {
 		};
 		struct ComponentEventArgs
 		{
+			ComponentEventArgs() = default;
 			ComponentEventArgs(
 				ComponentEventType type,
 				EntityID entity,
@@ -143,6 +148,7 @@ namespace Resecs {
 		};
 		using ComponentEventDelegate = Signal<ComponentEventArgs>;
 		ComponentEventDelegate OnComponentChanged;
+		const static int MAX_COMPONENT_COUNT = 2 << 8;
 		template<typename T>
 		int ConvertComponentTypeToIndex() {
 			return m_componentToIndex[typeid(T)];
@@ -170,7 +176,7 @@ namespace Resecs {
 			if (!CheckEntityAlive(entity)) {
 				throw std::runtime_error("This entity is already destroyed!");
 			}
-			if (!getComponentActivationStatus(entity)) {
+			if (!getComponentActivationStatus<T>(entity)) {
 				return nullptr;
 			}
 			auto cm = getComponentManager<T>();
@@ -205,20 +211,16 @@ namespace Resecs {
 	private:
 		std::unordered_map<std::type_index, std::unique_ptr<BaseComponentManager>> m_componentManagers;
 		std::unordered_map<std::type_index, int> m_componentToIndex;
-		int m_maxComponentIndex = 0;
-		std::vector<std::vector<char>> m_componentActivationTable;	//first dim is EntityID, second dim is componentID
+		using ActivationTable = std::bitset<MAX_COMPONENT_COUNT>;
+		std::vector<ActivationTable> m_componentActivationTable;	//first dim is EntityID, second dim is componentID
 		template<typename T>
-		char& getComponentActivationStatus(EntityID entity) {
-			if (entity.index >= m_componentActivationTable.size())
-			{
-				m_componentActivationTable.resize((entity.index + 1) * 1.5f);
-			}
+		ActivationTable::reference getComponentActivationStatus(EntityID entity) {
+			EnlargeVectorToFit(m_componentActivationTable, entity.index);
 			auto& vec = m_componentActivationTable[entity.index];
 			auto componentIndex = m_componentToIndex[typeid(T)];
-			if (componentIndex >= vec.size())
-				vec.resize((componentIndex + 1)* 1.5f);
 			return vec[componentIndex];
 		}
+		int m_maxComponentTypeIndex = 0;	//used to assign unique index to every new component type.
 		template<typename T>
 		ComponentManager<T>* getComponentManager() {
 			auto cmIte = m_componentManagers.find(typeid(T));
@@ -226,7 +228,7 @@ namespace Resecs {
 				//Create cm.
 				this->m_componentManagers[typeid(T)] = std::make_unique<ComponentManager<T>>();
 				//AddComponent type->int map.
-				m_componentToIndex[typeid(T)] = m_maxComponentIndex++;
+				m_componentToIndex[typeid(T)] = m_maxComponentTypeIndex++;
 				cmIte = this->m_componentManagers.find(typeid(T));
 			}
 			return static_cast<ComponentManager<T>*>(cmIte->second.get());

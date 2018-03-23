@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <queue>
+#include "Utils\Common.hpp"
 
 class BaseComponentManager
 {
@@ -14,7 +15,10 @@ public:
 template <typename TComp>
 class ComponentManager : public BaseComponentManager {
 public:
-	ComponentManager(){
+	ComponentManager(size_t initialSize = 1024):
+		m_componentIndex(initialSize),
+		m_componentPool(initialSize)
+	{
 
 	}
 
@@ -45,15 +49,11 @@ public:
 			//use a new slot.
 			memoryIndex = m_maxIndex++;
 			//enlarge pool.
-			if (m_componentPool.size() <= memoryIndex) {
-				m_componentPool.resize((memoryIndex + 1) * 1.5f);
-			}
+			EnlargeVectorToFit(m_componentPool, memoryIndex);
 		}
 
 		//enlarge index pool.
-		if (m_componentIndex.size() <= id) {
-			m_componentIndex.resize((id + 1) * 1.5f);
-		}
+		EnlargeVectorToFit(m_componentIndex, memoryIndex);
 
 		//map index to correct memory position.
 		m_componentIndex[id] = memoryIndex;

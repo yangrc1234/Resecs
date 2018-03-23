@@ -15,7 +15,7 @@ namespace Resecs {
 
 		void Destroy();
 
-		/* Replace the component of type T with new one, if entity doesn't have T, do Add only.
+		/* Replace T with new one, if entity doesn't have T, do Add only.
 		This will trigger Removed(if there is a component before replace) and Added event at once.
 		To avoid that, use Get() and set fields manually.
 		*/
@@ -25,7 +25,7 @@ namespace Resecs {
 			(*world->AddComponent<T>(entityID)) = val;
 		}
 
-		/* Get pointer to the component of type T. 
+		/* Get pointer to T. 
 		Will return nullptr if this component doesn't exist.
 		*/
 		template<typename T>
@@ -33,13 +33,13 @@ namespace Resecs {
 			return world->GetComponent<T>(entityID);
 		}
 
-		/* Check if the entity has component of type T */
+		/* Check if the entity has T */
 		template<typename T>
 		bool Has() {
 			return world->HasComponent<T>(entityID);
 		}
 
-		/* Add a component of type T to the entity.
+		/* Add a T to the entity.
 		Will throw exception if T already exists.
 		*/
 		template<typename T>
@@ -47,6 +47,14 @@ namespace Resecs {
 			auto p = world->AddComponent<T>(entityID);
 			*p = val;
 			return p;
+		}
+
+		/* Remove a component form entity.
+		Throw exception if entity doesn't have T.
+		*/
+		template<typename T>
+		void Remove() {
+			world->RemoveComponent<T>(entityID);
 		}
 	};
 }

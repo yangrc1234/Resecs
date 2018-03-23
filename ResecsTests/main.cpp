@@ -62,32 +62,12 @@ TEST(WorldTest, EntityCreationTest) {
 	for (size_t i = 0; i < World::MAX_ENTITY_COUNT; i++)
 	{
 		auto tempEntity = testWorld.Create();
-		tempEntity.Add(PositionComponent(0, 0, 0));
 	}
 	ASSERT_TRUE(testWorld.EntityCount() == World::MAX_ENTITY_COUNT);
 
 	ASSERT_ANY_THROW(
 		auto tempEntity = testWorld.Create();	//should cause a overflow.
 	);
-}
-
-TEST(WorldTest, AddComponentTest) {
-	World testWorld;
-	auto entity = testWorld.Create();
-	ASSERT_FALSE(entity.Has<PositionComponent>());
-	entity.Add(PositionComponent(0,0,1));
-	ASSERT_TRUE(entity.Has<PositionComponent>());
-	ASSERT_TRUE(entity.Get<PositionComponent>()->val == PositionComponent(0, 0, 1).val);
-
-	for (size_t i = 0; i < 5; i++)
-	{
-		auto ent = testWorld.Create();
-		ent.Add(PositionComponent(i,0,0));
-		ent.Add(VelocityComponent(0, 1, 0));
-		if (i != 3) {
-			ent.Add(FlagComponent());
-		}
-	}
 }
 
 TEST(WorldTest, EntityDestroyTest) {
@@ -101,9 +81,75 @@ TEST(WorldTest, EntityDestroyTest) {
 	ASSERT_ANY_THROW(
 		entity.Get<PositionComponent>();
 		);
-
 	ASSERT_ANY_THROW(
 		entity.Has<PositionComponent>();
 	);
 }
 
+TEST(ComponentTest, AddComponentTest) {
+	World testWorld;
+	auto entity = testWorld.Create();
+	ASSERT_FALSE(entity.Has<PositionComponent>());
+	entity.Add(PositionComponent(0, 0, 1));
+	ASSERT_TRUE(entity.Has<PositionComponent>());
+	ASSERT_TRUE(entity.Get<PositionComponent>()->val == PositionComponent(0, 0, 1).val);
+
+	for (size_t i = 0; i < 5; i++)
+	{
+		auto ent = testWorld.Create();
+		ent.Add(PositionComponent(i, 0, 0));
+		ent.Add(VelocityComponent(0, 1, 0));
+		if (i != 3) {
+			ent.Add(FlagComponent());
+		}
+	}
+}
+
+TEST(ComponentTest, RemoveComponentTest) {
+	World testWorld;
+	auto entity = testWorld.Create();
+	entity.Add(PositionComponent(0, 0, 1));
+
+	entity.Remove<PositionComponent>();
+	ASSERT_FALSE(entity.Has<PositionComponent>());
+	entity.Add(PositionComponent(0, 0, 1));
+	entity.Destroy();
+}
+
+TEST(ComponentTest, EditComponentTest) {
+	World testWorld;
+	auto entity = testWorld.Create();
+	World::ComponentEventArgs temp;
+	auto connection = testWorld.OnComponentChanged.Connect(
+		[&](World::ComponentEventArgs arg) {
+		temp = arg;
+	}
+	);
+	entity.Add(PositionComponent(0, 0, 1));
+	ASSERT_TRUE(
+		temp.type == World::ComponentEventType::Added
+	);
+	ASSERT_TRUE(temp.entity == entity.entityID);
+	ASSERT_TRUE(temp.componentTypeIndex == 0);
+
+	entity.Remove<PositionComponent>();
+	ASSERT_TRUE(
+		temp.type == World::ComponentEventType::Removed
+	);
+	ASSERT_TRUE(temp.entity == entity.entityID);
+	ASSERT_TRUE(temp.componentTypeIndex == 0);
+
+	entity.Add(VelocityComponent(0, 0, 1));
+	ASSERT_TRUE(
+		temp.type == World::ComponentEventType::Added
+	);
+	ASSERT_TRUE(temp.entity == entity.entityID);
+	ASSERT_TRUE(temp.componentTypeIndex == 1);
+
+	entity.Remove<VelocityComponent>();
+	ASSERT_TRUE(
+		temp.type == World::ComponentEventType::Removed
+	);
+	ASSERT_TRUE(temp.entity == entity.entityID);
+	ASSERT_TRUE(temp.componentTypeIndex == 1);
+}
