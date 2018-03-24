@@ -47,7 +47,6 @@ public:
 class FlagComponent{};
 
 TEST(WorldTest, EntityCreationTest) {
-	
 	World testWorld;
 	
 	ASSERT_TRUE(testWorld.EntityCount() == 0);
@@ -119,36 +118,36 @@ TEST(ComponentTest, RemoveComponentTest) {
 TEST(ComponentTest, EditComponentTest) {
 	World testWorld;
 	auto entity = testWorld.Create();
-	World::ComponentEventArgs temp;
+	ComponentEventArgs temp;
 	auto connection = testWorld.OnComponentChanged.Connect(
-		[&](World::ComponentEventArgs arg) {
+		[&](ComponentEventArgs arg) {
 		temp = arg;
 	}
 	);
 	entity.Add(PositionComponent(0, 0, 1));
 	ASSERT_TRUE(
-		temp.type == World::ComponentEventType::Added
+		temp.type == ComponentEventType::Added
 	);
 	ASSERT_TRUE(temp.entity == entity.entityID);
 	ASSERT_TRUE(temp.componentTypeIndex == 0);
 
 	entity.Remove<PositionComponent>();
 	ASSERT_TRUE(
-		temp.type == World::ComponentEventType::Removed
+		temp.type == ComponentEventType::Removed
 	);
 	ASSERT_TRUE(temp.entity == entity.entityID);
 	ASSERT_TRUE(temp.componentTypeIndex == 0);
 
 	entity.Add(VelocityComponent(0, 0, 1));
 	ASSERT_TRUE(
-		temp.type == World::ComponentEventType::Added
+		temp.type == ComponentEventType::Added
 	);
 	ASSERT_TRUE(temp.entity == entity.entityID);
 	ASSERT_TRUE(temp.componentTypeIndex == 1);
 
 	entity.Remove<VelocityComponent>();
 	ASSERT_TRUE(
-		temp.type == World::ComponentEventType::Removed
+		temp.type == ComponentEventType::Removed
 	);
 	ASSERT_TRUE(temp.entity == entity.entityID);
 	ASSERT_TRUE(temp.componentTypeIndex == 1);

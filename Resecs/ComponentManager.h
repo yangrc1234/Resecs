@@ -6,6 +6,8 @@
 class BaseComponentManager
 {
 public:
+	virtual void Release(int id) = 0;
+	virtual void Create(int id) = 0;
 	virtual ~BaseComponentManager()
 	{
 
@@ -31,13 +33,13 @@ public:
 	}
 	
 	//release a component for id.
-	void Release(int id) {
+	virtual void Release(int id) override {
 		auto memoryIndex = m_componentIndex[id];
 		m_releasedIndex.push(memoryIndex);
 	}
 
 	//create a component for id.
-	void Create(int id) {
+	virtual void Create(int id) override {
 		int memoryIndex;
 		if (m_releasedIndex.size() > 0) {
 			//use released index.

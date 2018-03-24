@@ -36,7 +36,8 @@ namespace Resecs {
 		/* Check if the entity has T */
 		template<typename T>
 		bool Has() {
-			return world->HasComponent<T>(entityID);
+			int compIndex = world->ConvertComponentTypeToIndex<T>();
+			return world->HasComponent(entityID,compIndex);
 		}
 
 		/* Add a T to the entity.
@@ -54,7 +55,8 @@ namespace Resecs {
 		*/
 		template<typename T>
 		void Remove() {
-			world->RemoveComponent<T>(entityID);
+			int compIndex = world->ConvertComponentTypeToIndex<T>();
+			world->RemoveComponent(entityID, compIndex);
 		}
 	};
 }

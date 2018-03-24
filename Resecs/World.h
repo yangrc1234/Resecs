@@ -29,6 +29,29 @@ namespace Resecs {
 		return false;
 	}
 
+	enum class ComponentEventType
+	{
+		Added,
+		Removed,
+	};
+
+	struct ComponentEventArgs
+	{
+		ComponentEventArgs() = default;
+		ComponentEventArgs(
+			ComponentEventType type,
+			EntityID entity,
+			uint16_t componentTypeIndex)
+		{
+			this->type = type;
+			this->entity = entity;
+			this->componentTypeIndex = componentTypeIndex;
+		}
+		ComponentEventType type;
+		EntityID entity;
+		uint16_t componentTypeIndex;
+	};
+
 	class World {
 	/* main interface. */
 	public:
@@ -72,9 +95,11 @@ namespace Resecs {
 				return !this->CheckEntityAlive(id);
 			}
 			), m_possibleAliveEntities.end());
+			ActivationTable componentFilter = ConvertComponentTypesToMask<TSubComps>();
+
 			for (auto id : m_possibleAliveEntities) {
 				auto entityHandle = GetEntityHandle(id);
-				if (AllTrue(HasComponent<TSubComps>(id.index)...))
+				if ((GetActivationTableFor(entityHandle.entityID) & componentFilter) == componentFilter)
 					func(entityHandle, GetComponent<TSubComps>(id.index)...);
 			}
 		}
@@ -112,10 +137,14 @@ namespace Resecs {
 		const static int MAX_ENTITY_COUNT = 2 << 20;	//max entity count.
 	private:
 		void destroyEntity(EntityID id) {
+			for (size_t i = 0; i < m_componentManagers.size(); i++)
+			{
+				if (HasComponent(id, i))
+					RemoveComponent(id, i);
+			}
 			m_generation[id.index]++;
 			m_alive[id.index] = false;
 			m_aliveEntityCount--;
-			//Clean activation table is done in Create()
 		}
 		std::vector<int> m_generation;
 		std::bitset<MAX_ENTITY_COUNT> m_alive;
@@ -125,117 +154,124 @@ namespace Resecs {
 	
 	/*Component management.*/
 	public:
-		enum class ComponentEventType
-		{
-			Added,
-			Removed,
-		};
-		struct ComponentEventArgs
-		{
-			ComponentEventArgs() = default;
-			ComponentEventArgs(
-				ComponentEventType type,
-				EntityID entity,
-				uint16_t componentTypeIndex)
-			{
-				this->type = type;
-				this->entity = entity;
-				this->componentTypeIndex = componentTypeIndex;
-			}
-			ComponentEventType type;
-			EntityID entity;
-			uint16_t componentTypeIndex;
-		};
+		const static int MAX_COMPONENT_COUNT = 2 << 8;
+		using ActivationTable = std::bitset<MAX_COMPONENT_COUNT>;
 		using ComponentEventDelegate = Signal<ComponentEventArgs>;
 		ComponentEventDelegate OnComponentChanged;
-		const static int MAX_COMPONENT_COUNT = 2 << 8;
 		template<typename T>
 		int ConvertComponentTypeToIndex() {
+			getComponentManager<T>();	//make sure T is registered.
 			return m_componentToIndex[typeid(T)];
 		}
+		template<typename... TComps>
+		ActivationTable ConvertComponentTypesToMask() {
+			ActivationTable result;
+			convertComponentTypesToMaskInternal<TComps>(result);
+			return result;
+		}
+	private:
+		template<typename TComp,typename... TComps>
+		void convertComponentTypesToMaskInternal(ActivationTable& bs) {
+			convertComponentTypesToMaskInternal<TComp>(bs);
+			convertComponentTypesToMaskInternal<TComps>(bs);
+		}
+		template<typename TComp>
+		void convertComponentTypesToMaskInternal(ActivationTable& bs) {
+			bs.set(ConvertComponentTypeToIndex<TComp>());
+		}
+	public:
 		template<typename T>
 		T* AddComponent(EntityID entity) {
+			int compIndex = ConvertComponentTypeToIndex<T>();
 			if (!CheckEntityAlive(entity)) {
 				throw std::runtime_error("This entity is already destroyed!");
 			}
-			if (HasComponent<T>(entity)) {
+			if (HasComponent(entity, compIndex)) {
 				throw std::runtime_error("This entity already has this component!");
 			}
 			auto cm = getComponentManager<T>();
 			cm->Create(entity.index);
-			getComponentActivationStatus<T>(entity) = true;
+			getComponentActivationStatus(entity, compIndex) = true;
 			OnComponentChanged.Invoke(ComponentEventArgs(
 				ComponentEventType::Added,
 				entity,
-				m_componentToIndex[typeid(T)]
+				compIndex
 			));
 			return cm->Get(entity.index);
 		}
 		template<typename T>
 		T* GetComponent(EntityID entity) {
+			int compIndex = ConvertComponentTypeToIndex<T>();
 			if (!CheckEntityAlive(entity)) {
 				throw std::runtime_error("This entity is already destroyed!");
 			}
-			if (!getComponentActivationStatus<T>(entity)) {
+			if (!getComponentActivationStatus(entity,compIndex)) {
 				return nullptr;
 			}
 			auto cm = getComponentManager<T>();
 			return cm->Get(entity.index);
 		}
-		template<typename T>
-		void RemoveComponent(EntityID entity) {
+		void RemoveComponent(EntityID entity,int componentIndex) {
 			if (!CheckEntityAlive(entity)) {
 				throw std::runtime_error("This entity is already destroyed!");
 			}
-			if (!HasComponent<T>(entity)) {
+			if (!HasComponent(entity,componentIndex)) {
 				throw std::runtime_error("This entity doesn't have this type of component!");
 			}
-			auto cm = getComponentManager<T>();
+			auto cm = getComponentManager(componentIndex);
 			cm->Release(entity.index);
-			getComponentActivationStatus<T>(entity) = false;
+			getComponentActivationStatus(entity,componentIndex) = false;
 			OnComponentChanged.Invoke(ComponentEventArgs(
 				ComponentEventType::Removed,
 				entity,
-				m_componentToIndex[typeid(T)]
+				componentIndex
 			));
 		}
-		template<typename T>
-		bool HasComponent(EntityID entity) {
+		bool HasComponent(EntityID entity,int componentIndex) {
 			if (!CheckEntityAlive(entity)) {
 				throw std::runtime_error("This entity is already destroyed!");
 			}
-			if (m_componentToIndex.find(typeid(T)) == m_componentToIndex.end())
-				return false;
-			return getComponentActivationStatus<T>(entity);
+			return getComponentActivationStatus(entity,componentIndex);
+		}
+		ActivationTable& GetActivationTableFor(EntityID entity) {
+			if (!CheckEntityAlive(entity)) {
+				throw std::runtime_error("This entity is already destroyed!");
+			}
+			return m_componentActivationTable[entity.index];
 		}
 	private:
-		std::unordered_map<std::type_index, std::unique_ptr<BaseComponentManager>> m_componentManagers;
 		std::unordered_map<std::type_index, int> m_componentToIndex;
-		using ActivationTable = std::bitset<MAX_COMPONENT_COUNT>;
+		std::vector<std::unique_ptr<BaseComponentManager>> m_componentManagers;
 		std::vector<ActivationTable> m_componentActivationTable;	//first dim is EntityID, second dim is componentID
-		template<typename T>
-		ActivationTable::reference getComponentActivationStatus(EntityID entity) {
+		ActivationTable::reference getComponentActivationStatus(EntityID entity,int componentIndex) {
 			EnlargeVectorToFit(m_componentActivationTable, entity.index);
 			auto& vec = m_componentActivationTable[entity.index];
-			auto componentIndex = m_componentToIndex[typeid(T)];
 			return vec[componentIndex];
 		}
-		int m_maxComponentTypeIndex = 0;	//used to assign unique index to every new component type.
+
+		int m_maxComponentTypeCount = 0;	//used to assign unique index to every new component type.
 		template<typename T>
 		ComponentManager<T>* getComponentManager() {
-			auto cmIte = m_componentManagers.find(typeid(T));
-			if (cmIte == this->m_componentManagers.end()) {
+			auto compIndexIte = m_componentToIndex.find(typeid(T));
+			int compIndex;
+			if (compIndexIte == m_componentToIndex.end()) {
 				//Create cm.
-				this->m_componentManagers[typeid(T)] = std::make_unique<ComponentManager<T>>();
+				this->m_componentManagers.emplace_back(std::make_unique<ComponentManager<T>>());
 				//AddComponent type->int map.
-				m_componentToIndex[typeid(T)] = m_maxComponentTypeIndex++;
-				cmIte = this->m_componentManagers.find(typeid(T));
+				compIndex = m_maxComponentTypeCount;
+				m_componentToIndex[typeid(T)] = m_maxComponentTypeCount++;
 			}
-			return static_cast<ComponentManager<T>*>(cmIte->second.get());
+			else
+			{
+				compIndex = compIndexIte->second;
+			}
+			return static_cast<ComponentManager<T>*>(m_componentManagers[compIndex].get());
 		}
-	};
+		BaseComponentManager* getComponentManager(int componentIndex) {
+			return static_cast<BaseComponentManager*>(m_componentManagers[componentIndex].get());
+		}
+};
 
-	template <typename... TGroupComps>
 	class Group {
 	public:
 		/* Iterator for group.
@@ -268,13 +304,13 @@ namespace Resecs {
 		World* world;
 		std::unordered_set<EntityID> cachedEntities;
 		World::ComponentEventDelegate::SignalConnection added;
-		World::ComponentEventDelegate::SignalConnection removed;
-	public:
 		Group(World* world) :
 			world(world),
 			added(world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))) {
 			Initialize();
 		}
+		std::bitset<World::MAX_COMPONENT_COUNT> componentFilter;
+	public:
 		auto begin() {
 			return GroupIterator(world, cachedEntities.cbegin());
 		}
@@ -297,18 +333,40 @@ namespace Resecs {
 			return result;
 		}
 	private:
-		void OnChanged(World::ComponentEventArgs arg) {
-			if (cachedEntities.find(arg.entity) != cachedEntities.end())
-				return;
-			if (AllTrue(world->HasComponent<TGroupComps>(entityIndex)...)) {
-				cachedEntities.insert(entityIndex);
+		void OnChanged(ComponentEventArgs arg) {
+			if ((world->GetActivationTableFor(arg.entity) & componentFilter) == componentFilter) {
+				cachedEntities.insert(arg.entity);
 			}
 		}
 		void Initialize() {
-			world->Each<TGroupComps...>(
-				[=](Entity entity, TGroupComps*... args) {
-				cachedEntities.insert(entity.entityID);
+			world->Each(
+				[&](Entity entity) {
+				if ((world->GetActivationTableFor(entity.entityID) & componentFilter) == componentFilter) {
+					cachedEntities.insert(entity.entityID);
+				}
 			});
+		}
+	
+	/* static methods for creating groups.*/
+	public:
+		/* Create a group. */
+		template<typename... TComps>
+		static Group CreateGroup(World* world) {
+			auto group = Group();
+			group.world = world;
+			MarkBit<TComps>(group.componentFilter);
+			group.Initialize();
+			return group;
+		}
+	private:
+		template<typename TComp,typename... TComps>
+		static void MarkBit(Group& group) {
+			MarkBit<TComp>(group);
+			MarkBit<TComps>(group);
+		}
+		template<typename TComp>
+		static void MarkBit(Group& group) {
+			group.componentFilter.set(group.world->ConvertComponentTypeToIndex<TComp>());
 		}
 	};
 }
