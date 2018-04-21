@@ -79,9 +79,53 @@ TEST(WorldTest, EntityDestroyTest) {
 	ASSERT_FALSE(entity.IsAlive());
 	ASSERT_ANY_THROW(
 		entity.Get<PositionComponent>();
-		);
+	);
 	ASSERT_ANY_THROW(
 		entity.Has<PositionComponent>();
+	);
+}
+
+TEST(WorldTest, ComponentEventTest) {
+	World testWorld;
+	ComponentEventArgs testArg;
+	auto signal = testWorld.OnComponentChanged.Connect(
+		[&](ComponentEventArgs arg) {
+		testArg = arg;
+	});
+	
+	auto entity = testWorld.Create();
+
+	entity.Add(PositionComponent(0, 0, 1));
+	entity.Add(VelocityComponent(0, 0, 0));
+	ASSERT_TRUE(
+		testArg.type == ComponentEventType::Added
+	);
+	ASSERT_TRUE(
+		testArg.componentTypeIndex == testWorld.ConvertComponentTypeToIndex<VelocityComponent>()
+	);
+	ASSERT_TRUE(
+		testArg.entity == entity.entityID
+	);
+
+	auto entity2 = testWorld.Create();
+	entity2.Add(VelocityComponent(0, 0, 0));
+	ASSERT_TRUE(
+		testArg.type == ComponentEventType::Added
+	);
+	ASSERT_TRUE(
+		testArg.componentTypeIndex == testWorld.ConvertComponentTypeToIndex<VelocityComponent>()
+	);
+	ASSERT_TRUE(
+		testArg.entity == entity2.entityID
+	);
+
+	entity.Remove<PositionComponent>();
+	ASSERT_TRUE(testArg.type == ComponentEventType::Removed);
+	ASSERT_TRUE(
+		testArg.componentTypeIndex == testWorld.ConvertComponentTypeToIndex<PositionComponent>()
+	);
+	ASSERT_TRUE(
+		testArg.entity == entity.entityID
 	);
 }
 
@@ -181,10 +225,59 @@ TEST(SingletonTest, 1) {
 	auto entity = testWorld.Create();
 	ASSERT_TRUE(entity.entityID.index == 1);	//index 0 should be occupied by singleton.
 
-	testWorld.Add(SgComponent(1));
 
-	ASSERT_TRUE(testWorld.Get<SgComponent>()->val == 1);
+	auto temp = testWorld.Add(SgComponent(1));
 	ASSERT_ANY_THROW(
 		testWorld.Add(SgComponent(1));
 	);
+	
+	ASSERT_TRUE(testWorld.Get<SgComponent>() == temp);
+
+	testWorld.Remove<SgComponent>();
+	ASSERT_TRUE(!testWorld.Has<SgComponent>());
+
+	//Prevent adding singletons to normal entity.
+	ASSERT_ANY_THROW(
+		entity.Add<SgComponent>();
+	);
+	ASSERT_ANY_THROW(
+		entity.Remove<SgComponent>();
+	); 
+	ASSERT_ANY_THROW(
+		entity.Replace<SgComponent>(SgComponent(1));
+	);
+}
+
+TEST(GroupTest, EntityCapture) {
+	World testWorld;
+	auto g = Group::CreateGroup<PositionComponent,VelocityComponent>(&testWorld);
+	ASSERT_TRUE(g.Count() == 0);
+
+	std::vector<Entity> testEntities;
+	for (size_t i = 0; i < 10; i++)
+	{
+		auto t = testWorld.Create();
+		t.Add<PositionComponent>();
+		t.Add<VelocityComponent>();
+		testEntities.push_back(t);
+	}
+	ASSERT_TRUE(g.Count() == 10);
+	for (auto& t : g) {
+		bool flag = false;
+		for (size_t i = 0; i < 10; i++)		//It's not guaranteed that group holds all entities in "order"
+		{
+			if (t.entityID == testEntities[i].entityID)
+				flag = true;
+		}
+		ASSERT_TRUE(flag);
+	}
+
+	//Test capture entities created before group.
+	auto group2 = Group::CreateGroup<PositionComponent>(&testWorld);
+	ASSERT_TRUE(group2.Count() == 10);
+
+	
+	testEntities[0].Remove<VelocityComponent>();
+	ASSERT_TRUE(g.Count() == 9);
+	ASSERT_TRUE(group2.Count() == 10);
 }

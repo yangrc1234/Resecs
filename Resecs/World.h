@@ -117,10 +117,10 @@ namespace Resecs {
 			return result;
 		}
 	private:
-		template<typename TComp,typename... TComps>
+		template<typename T, typename U,typename... Rest>
 		void convertComponentTypesToMaskInternal(ComponentActivationBitset& bs) {
-			convertComponentTypesToMaskInternal<TComp>(bs);
-			convertComponentTypesToMaskInternal<TComps>(bs);
+			convertComponentTypesToMaskInternal<T>(bs);
+			convertComponentTypesToMaskInternal<U,Rest...>(bs);
 		}
 		template<typename TComp>
 		void convertComponentTypesToMaskInternal(ComponentActivationBitset& bs) {

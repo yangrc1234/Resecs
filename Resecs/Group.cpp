@@ -1,4 +1,5 @@
 #include "Group.h"
+using namespace Resecs;
 
 Resecs::Group::GroupIterator::GroupIterator(World * world, std::unordered_set<EntityID>::const_iterator intIte) {
 	this->internalIterator = intIte;
@@ -8,20 +9,17 @@ Resecs::Group::GroupIterator::GroupIterator(World * world, std::unordered_set<En
 Resecs::Group::Group(World * world) :
 	world(world),
 	added(world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))) {
-	Initialize();
 }
 
-auto Resecs::Group::begin() {
+Group::GroupIterator Resecs::Group::begin() {
 	return GroupIterator(world, cachedEntities.cbegin());
 }
 
-auto Resecs::Group::end() {
+Group::GroupIterator Resecs::Group::end() {
 	return GroupIterator(world, cachedEntities.cend());
 }
 
-/* Return the count of entities in the group. */
-
-auto Resecs::Group::Count() {
+size_t Resecs::Group::Count() {
 	return cachedEntities.size();
 }
 
@@ -30,7 +28,7 @@ If you use range-for on Group, you can't destroy entities or RemoveComponent com
 Instead clone a vector then destroy entity in it.
 */
 
-auto Resecs::Group::GetVectorClone() {
+std::vector<Entity> Resecs::Group::GetVectorClone() {
 	std::vector<Entity> result;
 	for (auto& t : cachedEntities) {
 		result.push_back(world->GetEntityHandle(t));
@@ -39,8 +37,21 @@ auto Resecs::Group::GetVectorClone() {
 }
 
 void Resecs::Group::OnChanged(ComponentEventArgs arg) {
-	if ((world->GetActivationTableFor(arg.entity) & componentFilter) == componentFilter) {
-		cachedEntities.insert(arg.entity);
+	auto find = cachedEntities.find(arg.entity);
+	if (arg.type == ComponentEventType::Added) {
+		if (find == cachedEntities.end()) {
+			if ((world->GetActivationTableFor(arg.entity) & componentFilter) == componentFilter) {
+				cachedEntities.insert(arg.entity);
+			}
+		}
+	}
+	else
+	{
+		if (find != cachedEntities.end()) {
+			if ((world->GetActivationTableFor(arg.entity) & componentFilter) != componentFilter) {
+				cachedEntities.erase(find);
+			}
+		}
 	}
 }
 

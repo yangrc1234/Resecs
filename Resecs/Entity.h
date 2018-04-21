@@ -21,7 +21,8 @@ namespace Resecs {
 		*/
 		template<typename T>
 		void Replace(T val) {
-			world->RemoveComponent<T>(entityID);
+			ThrowIfSingletonTestFailed<T>();
+			Remove<T>();
 			(*world->AddComponent<T>(entityID)) = val;
 		}
 
@@ -30,12 +31,14 @@ namespace Resecs {
 		*/
 		template<typename T>
 		T* Get() {
+			ThrowIfSingletonTestFailed<T>();
 			return world->GetComponent<T>(entityID);
 		}
 
 		/* Check if the entity has T */
 		template<typename T>
 		bool Has() {
+			ThrowIfSingletonTestFailed<T>();
 			int compIndex = world->ConvertComponentTypeToIndex<T>();
 			return world->HasComponent(entityID,compIndex);
 		}
@@ -45,8 +48,19 @@ namespace Resecs {
 		*/
 		template<typename T>
 		T* Add(T val) {
+			ThrowIfSingletonTestFailed<T>();
 			auto p = world->AddComponent<T>(entityID);
 			*p = val;
+			return p;
+		}
+
+		/* Add a T to the entity.
+		Will throw exception if T already exists.
+		*/
+		template<typename T>
+		T* Add() {
+			ThrowIfSingletonTestFailed<T>();
+			auto p = world->AddComponent<T>(entityID);
 			return p;
 		}
 
@@ -55,8 +69,19 @@ namespace Resecs {
 		*/
 		template<typename T>
 		void Remove() {
+			ThrowIfSingletonTestFailed<T>();
 			int compIndex = world->ConvertComponentTypeToIndex<T>();
 			world->RemoveComponent(entityID, compIndex);
+		}
+	private:
+		template <typename T>
+		void ThrowIfSingletonTestFailed() {
+			if (std::is_base_of<ISingletonComponent, T>::value && entityID.index != 0) {
+				throw std::runtime_error("Can't add singleton to a normal entity!");
+			}
+			if (!std::is_base_of<ISingletonComponent, T>::value && entityID.index == 0) {
+				throw std::runtime_error("Can't add normal component to singleton entity!");
+			}
 		}
 	};
 }

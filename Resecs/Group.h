@@ -36,15 +36,15 @@ namespace Resecs
 		Group(World* world);
 		std::bitset<MAX_COMPONENT_COUNT> componentFilter;
 	public:
-		auto begin();
-		auto end();
+		Group::GroupIterator begin();
+		Group::GroupIterator end();
 		/* Return the count of entities in the group. */
-		auto Count();
+		size_t Count();
 		/* Return a copy of current entities inside the group.
 		If you use range-for on Group, you can't destroy entities or RemoveComponent component, since it will edit the collection.
 		Instead clone a vector then destroy entity in it.
 		*/
-		auto GetVectorClone();
+		std::vector<Entity> GetVectorClone();
 	private:
 		void OnChanged(ComponentEventArgs arg);
 		void Initialize();
@@ -54,21 +54,21 @@ namespace Resecs
 		/* Create a group. */
 		template<typename... TComps>
 		static Group CreateGroup(World* world) {
-			auto group = Group();
+			auto group = Group(world);
 			group.world = world;
-			MarkBit<TComps>(group.componentFilter);
+			MarkBit<TComps...>(group);
 			group.Initialize();
 			return group;
 		}
 	private:
-		template<typename TComp, typename... TComps>
+		template<typename T>
 		static void MarkBit(Group& group) {
-			MarkBit<TComp>(group);
-			MarkBit<TComps>(group);
+			group.componentFilter.set(group.world->ConvertComponentTypeToIndex<T>());
 		}
-		template<typename TComp>
+		template<typename T,typename U, typename... Rest>
 		static void MarkBit(Group& group) {
-			group.componentFilter.set(group.world->ConvertComponentTypeToIndex<TComp>());
+			MarkBit<T>(group);
+			MarkBit<U,Rest...>(group);
 		}
 };
 }
