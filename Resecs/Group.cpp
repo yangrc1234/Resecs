@@ -6,9 +6,19 @@ Resecs::Group::GroupIterator::GroupIterator(World * world, std::unordered_set<En
 	this->world = world;
 }
 
-Resecs::Group::Group(World * world) :
+Resecs::Group::Group(World* world, ComponentActivationBitset componentFilter) :
 	world(world),
-	added(world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))) {
+	added(world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))),
+	componentFilter(componentFilter){
+	Initialize();
+}
+
+Resecs::Group::Group(const Group & copy) :
+	world(copy.world),
+	added(copy.world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))),
+	componentFilter(copy.componentFilter)
+{
+	Initialize();
 }
 
 Group::GroupIterator Resecs::Group::begin() {
@@ -56,6 +66,7 @@ void Resecs::Group::OnChanged(ComponentEventArgs arg) {
 }
 
 void Resecs::Group::Initialize() {
+	cachedEntities.clear();
 	world->Each(
 		[&](Entity entity) {
 		if ((world->GetActivationTableFor(entity.entityID) & componentFilter) == componentFilter) {

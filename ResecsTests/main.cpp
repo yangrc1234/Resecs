@@ -250,7 +250,8 @@ TEST(SingletonTest, 1) {
 
 TEST(GroupTest, EntityCapture) {
 	World testWorld;
-	auto g = Group::CreateGroup<PositionComponent,VelocityComponent>(&testWorld);
+	auto og = Group::CreateGroup<PositionComponent,VelocityComponent>(&testWorld);
+	auto g = og;
 	ASSERT_TRUE(g.Count() == 0);
 
 	std::vector<Entity> testEntities;

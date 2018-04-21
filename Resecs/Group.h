@@ -33,9 +33,10 @@ namespace Resecs
 		World* world;
 		std::unordered_set<EntityID> cachedEntities;
 		ComponentEventDelegate::SignalConnection added;
-		Group(World* world);
-		std::bitset<MAX_COMPONENT_COUNT> componentFilter;
+		Group(World* world, ComponentActivationBitset componentFilter);
+		ComponentActivationBitset componentFilter;
 	public:
+		Group(const Group& copy);
 		Group::GroupIterator begin();
 		Group::GroupIterator end();
 		/* Return the count of entities in the group. */
@@ -54,21 +55,20 @@ namespace Resecs
 		/* Create a group. */
 		template<typename... TComps>
 		static Group CreateGroup(World* world) {
-			auto group = Group(world);
-			group.world = world;
-			MarkBit<TComps...>(group);
-			group.Initialize();
+			ComponentActivationBitset bs;
+			MarkBit<TComps...>(bs,world);
+			auto group = Group(world, bs);
 			return group;
 		}
 	private:
 		template<typename T>
-		static void MarkBit(Group& group) {
-			group.componentFilter.set(group.world->ConvertComponentTypeToIndex<T>());
+		static void MarkBit(ComponentActivationBitset& bs, World* world) {
+			bs.set(world->ConvertComponentTypeToIndex<T>());
 		}
 		template<typename T,typename U, typename... Rest>
-		static void MarkBit(Group& group) {
-			MarkBit<T>(group);
-			MarkBit<U,Rest...>(group);
+		static void MarkBit(ComponentActivationBitset& bs, World* world) {
+			MarkBit<T>(bs, world);
+			MarkBit<U,Rest...>(bs, world);
 		}
 };
 }
