@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
 
 add_subdirectory("./Resecs")
-add_subdirectory("./ResecsTests")
+
+option(buildTest "Should test be built" OFF)
+if (buildTest)
+	add_subdirectory("./ResecsTests")
+endif()
