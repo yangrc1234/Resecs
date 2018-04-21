@@ -3,9 +3,10 @@
 Resecs::World::World() :
 	m_componentActivationTable(1024),
 	m_generation(1024),
-	m_possibleAliveEntities(1024)
+	m_possibleAliveEntities(1024),
+	singletonEntity(this,EntityID(0,0))		
 {
-
+	singletonEntity = Create();
 }
 
 Resecs::Entity Resecs::World::Create() {

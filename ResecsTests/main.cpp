@@ -47,18 +47,18 @@ public:
 class FlagComponent{};
 
 TEST(WorldTest, EntityCreationTest) {
-	World testWorld;
+	World testWorld; 
 	
-	ASSERT_TRUE(testWorld.EntityCount() == 0);
-	ASSERT_FALSE(testWorld.CheckEntityAlive(EntityID(0, 0)));
+	ASSERT_TRUE(testWorld.EntityCount() == 1);	//should be a singleton there.
+	ASSERT_FALSE(testWorld.CheckEntityAlive(EntityID(1, 0)));
 	auto entity = testWorld.Create();
 	ASSERT_TRUE(testWorld.CheckEntityAlive(entity.entityID));
-	ASSERT_TRUE(testWorld.EntityCount() == 1);
-	auto entity2 = testWorld.Create();
 	ASSERT_TRUE(testWorld.EntityCount() == 2);
+	auto entity2 = testWorld.Create();
+	ASSERT_TRUE(testWorld.EntityCount() == 3);
 	entity.Destroy();
 	entity2.Destroy();
-	for (size_t i = 0; i < World::MAX_ENTITY_COUNT; i++)
+	for (size_t i = 0; i < World::MAX_ENTITY_COUNT - 1; i++)
 	{
 		auto tempEntity = testWorld.Create();
 	}
@@ -75,7 +75,7 @@ TEST(WorldTest, EntityDestroyTest) {
 	entity.Add(PositionComponent(0, 0, 1));
 	ASSERT_TRUE(entity.IsAlive());
 	entity.Destroy();
-	ASSERT_TRUE(world.EntityCount() == 0);
+	ASSERT_TRUE(world.EntityCount() == 1);
 	ASSERT_FALSE(entity.IsAlive());
 	ASSERT_ANY_THROW(
 		entity.Get<PositionComponent>();
@@ -151,4 +151,40 @@ TEST(ComponentTest, EditComponentTest) {
 	);
 	ASSERT_TRUE(temp.entity == entity.entityID);
 	ASSERT_TRUE(temp.componentTypeIndex == 1);
+}
+
+TEST(ComponentTest, GetComponentTest) {
+	World testWorld;
+	auto entity = testWorld.Create();
+	ASSERT_TRUE(entity.Get<PositionComponent>() == nullptr);
+	auto ptrAdd = entity.Add(PositionComponent(0, 0, 5));
+	ASSERT_TRUE(entity.Get<PositionComponent>() == ptrAdd);
+	ptrAdd->val.x = 1;
+	ASSERT_TRUE(entity.Get<PositionComponent>()->val == PositionComponent(1, 0, 5).val);
+}
+
+class SgComponent : public Component, public ISingletonComponent
+{
+public:
+	SgComponent()
+	{
+
+	}
+	SgComponent(int val) : val(val)
+	{
+
+	}
+	int val;
+};
+TEST(SingletonTest, 1) {
+	World testWorld;
+	auto entity = testWorld.Create();
+	ASSERT_TRUE(entity.entityID.index == 1);	//index 0 should be occupied by singleton.
+
+	testWorld.Add(SgComponent(1));
+
+	ASSERT_TRUE(testWorld.Get<SgComponent>()->val == 1);
+	ASSERT_ANY_THROW(
+		testWorld.Add(SgComponent(1));
+	);
 }

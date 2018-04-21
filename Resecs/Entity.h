@@ -20,7 +20,7 @@ namespace Resecs {
 		To avoid that, use Get() and set fields manually.
 		*/
 		template<typename T>
-		void Replace(T&& val) {
+		void Replace(T val) {
 			world->RemoveComponent<T>(entityID);
 			(*world->AddComponent<T>(entityID)) = val;
 		}

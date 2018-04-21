@@ -100,6 +100,7 @@ namespace Resecs {
 		size_t m_creationIndex = 0;
 		int m_aliveEntityCount = 0;
 		std::vector<EntityID> m_possibleAliveEntities;
+		Entity singletonEntity;
 	
 	/*Component management.*/
 	public:
@@ -125,7 +126,8 @@ namespace Resecs {
 		void convertComponentTypesToMaskInternal(ComponentActivationBitset& bs) {
 			bs.set(ConvertComponentTypeToIndex<TComp>());
 		}
-	public:
+	private:
+		//Only friend class Entity use these.
 		template<typename T>
 		T* AddComponent(EntityID entity) {
 			int compIndex = ConvertComponentTypeToIndex<T>();
@@ -159,6 +161,35 @@ namespace Resecs {
 		}
 		void RemoveComponent(EntityID entity, int componentIndex);
 		bool HasComponent(EntityID entity, int componentIndex);
+	
+		/*Singleton component manipulation*/
+	public:
+		template<typename T>
+		T* Add(T val) {
+			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
+			return singletonEntity.Add<T>(val);
+		}
+		template<typename T>
+		T* Get() {
+			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
+			return singletonEntity.Get<T>();
+		}
+		template<typename T>
+		T* Replace(T val) {
+			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
+			return singletonEntity.Replace<T>(val);
+		}
+		template<typename T>
+		bool Has() {
+			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
+			return singletonEntity.Has<T>();
+		}
+		template<typename T>
+		void Remove() {
+			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
+			singletonEntity.Remove<T>();
+		}
+		
 		ComponentActivationBitset& GetActivationTableFor(EntityID entity);
 	private:
 		std::unordered_map<std::type_index, int> m_componentToIndex;
@@ -173,7 +204,13 @@ namespace Resecs {
 			int compIndex;
 			if (compIndexIte == m_componentToIndex.end()) {
 				//Create cm.
-				this->m_componentManagers.emplace_back(std::make_unique<ComponentManager<T>>());
+				if (std::is_base_of<ISingletonComponent, T>::value) {
+					this->m_componentManagers.emplace_back(std::make_unique<ComponentManager<T>>(1));		//give a initial size of one.
+				}
+				else
+				{
+					this->m_componentManagers.emplace_back(std::make_unique<ComponentManager<T>>());
+				}
 				//AddComponent type->int map.
 				compIndex = m_maxComponentTypeCount;
 				m_componentToIndex[typeid(T)] = m_maxComponentTypeCount++;
