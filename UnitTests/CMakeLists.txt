@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 PROJECT(resecsTests)
-file(GLOB_RECURSE SOURCES ./*.cpp)
+file(GLOB_RECURSE SOURCES ./*.cpp ./*.hpp)
 
 include_directories(${Resecs_SOURCE_DIR}/..)
 source_group("Source Files" FILES ${HEADERS} ${SOURCES})

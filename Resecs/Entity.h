@@ -22,7 +22,8 @@ namespace Resecs {
 		template<typename T>
 		void Replace(T val) {
 			ThrowIfSingletonTestFailed<T>();
-			Remove<T>();
+			if (Has<T>())
+				Remove<T>();
 			(*world->AddComponent<T>(entityID)) = val;
 		}
 
