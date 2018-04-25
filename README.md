@@ -1,6 +1,6 @@
 # What's Resecs
-Resecs stands for REally Simple ECS. It's a header-only library, with 500+ lines of codes in C++.
-But it contains all features that an ECS library should have.
+Resecs is a ecs library I created for myself to use in my little "game engine".
+It contains most features an ecs library should have.
 
 ## Example
 1. Create components
@@ -26,24 +26,14 @@ public:
 	float vert;
 };
 ```
-2. Create a world contains with your components.
-``` C++
-using ExampleWorld = World`
-<
-	Transform,
-	Velocity
->;
-ExampleWorld world;
-using ExampleEntity = ExampleWorld::Entity;
-```
-3. Create an entity, and add components to it.
+2. Create an entity, and add components to it.
 ```C++
+World world;	//Component type as template args are not required for World type now.
 auto entity = world.CreateEntity();
-auto pTrans = entity.Set<Transform>();	//Set() adds(or replace) a component of the entity. and return the pointer to the component.
+auto pTrans = entity.Add<Transform>();
 pTrans->position = Vector3(0.0f,0.0f,0.0f);
-entity.Set<Velocity>(10.0f,0.0f);	//or you can use constructor function as well.
 ```
-4. Iterate through entities using component filter.
+3. Iterate through entities using component filter.
 ```C++
 world->Each<Transform,Velocity>([=](ExampleEntity entity,Transform* pTrans,Velocity* pVel)
 {
@@ -57,10 +47,9 @@ The class Entity doesn't actually hold any component. It's just a handle for eas
 Each type of component are put together in memory, and managed by World class, which is friendly to cache.
 
 ### Group
-Besides iterating all the entities every time, you can use a Group to automatically cache entities(actually, entity handles) that have the components you want, so that we can have a faster iteration.
-It's pretty easy to use a group. e.g.
+Using World.Each means iterating through all entities. Besides that, a Group can be used for faster iteration. It will cache all entity that matches component type. e.g.
 ```C++
-TestWorld::Group<Transform,Velocity> group(&world);	
+Group::CreateGroup<PositionComponent,VelocityComponent>(&world)
 for(auto& entity : group)
 {
 	//...do sth with entity.
@@ -78,16 +67,6 @@ struct Time : public Component, public ISingletonComponent{		//notice we add ISi
 	float time;
 	float dt;
 };
-```
-Add singleton component to your World class just like every other component:
-```C++
-using ExampleWorld = World
-<
-	Transform,
-	Velocity,
-	//Singletons
-	Time
->;
 ```
 To access the singleton component, use the World object.
 ```C++
