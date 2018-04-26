@@ -4,6 +4,24 @@
 
 namespace Resecs
 {
+	struct GroupEntityEventArgs
+	{
+		Entity entity;
+		enum class Type
+		{
+			Added,
+			Removed
+		};
+		Type type;
+		GroupEntityEventArgs(Entity id, Type type) : entity(id),type(type)
+		{
+
+		}
+		GroupEntityEventArgs() {}
+	};
+
+	using GroupEntityEventDelegate = Signal<GroupEntityEventArgs>;
+
 	class Group {
 	public:
 		/* Iterator for group.
@@ -32,7 +50,7 @@ namespace Resecs
 	private:
 		World* world;
 		std::unordered_set<EntityID> cachedEntities;
-		ComponentEventDelegate::SignalConnection added;
+		ComponentEventDelegate::SignalConnection componentChangedSignalConnection;
 		Group(World* world, ComponentActivationBitset componentFilter);
 		ComponentActivationBitset componentFilter;
 	public:
@@ -46,6 +64,9 @@ namespace Resecs
 		Instead clone a vector then destroy entity in it.
 		*/
 		std::vector<Entity> GetVectorClone();
+		/* Called when an entity enter or leave the group. 
+		*/
+		GroupEntityEventDelegate onGroupChanged;
 	private:
 		void OnChanged(ComponentEventArgs arg);
 		void Initialize();

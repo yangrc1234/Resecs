@@ -8,14 +8,14 @@ Resecs::Group::GroupIterator::GroupIterator(World * world, std::unordered_set<En
 
 Resecs::Group::Group(World* world, ComponentActivationBitset componentFilter) :
 	world(world),
-	added(world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))),
+	componentChangedSignalConnection(world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))),
 	componentFilter(componentFilter){
 	Initialize();
 }
 
 Resecs::Group::Group(const Group & copy) :
 	world(copy.world),
-	added(copy.world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))),
+	componentChangedSignalConnection(copy.world->OnComponentChanged.Connect(std::bind(&Group::OnChanged, this, std::placeholders::_1))),
 	componentFilter(copy.componentFilter)
 {
 	Initialize();
@@ -52,6 +52,7 @@ void Resecs::Group::OnChanged(ComponentEventArgs arg) {
 		if (find == cachedEntities.end()) {
 			if ((world->GetActivationTableFor(arg.entity) & componentFilter) == componentFilter) {
 				cachedEntities.insert(arg.entity);
+				onGroupChanged.Invoke(Resecs::GroupEntityEventArgs(world->GetEntityHandle(arg.entity), GroupEntityEventArgs::Type::Added));
 			}
 		}
 	}
@@ -60,6 +61,7 @@ void Resecs::Group::OnChanged(ComponentEventArgs arg) {
 		if (find != cachedEntities.end()) {
 			if ((world->GetActivationTableFor(arg.entity) & componentFilter) != componentFilter) {
 				cachedEntities.erase(find);
+				onGroupChanged.Invoke(Resecs::GroupEntityEventArgs(world->GetEntityHandle(arg.entity), GroupEntityEventArgs::Type::Removed));
 			}
 		}
 	}

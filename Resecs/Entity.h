@@ -7,14 +7,12 @@ namespace Resecs {
 	private:
 		friend class World;
 		World* world;  //reference to world.
-		Entity(World* world, EntityID entityID);
 	public:
+		Entity() {}
+		Entity(World* world, EntityID entityID);
 		EntityID entityID;
-
 		bool IsAlive();
-
 		void Destroy();
-
 		/* Replace T with new one, if entity doesn't have T, do Add only.
 		This will trigger Removed(if there is a component before replace) and Added event at once.
 		To avoid that, use Get() and set fields manually.
