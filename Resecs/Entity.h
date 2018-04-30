@@ -17,12 +17,12 @@ namespace Resecs {
 		This will trigger Removed(if there is a component before replace) and Added event at once.
 		To avoid that, use Get() and set fields manually.
 		*/
-		template<typename T>
-		void Replace(T val) {
+		template<typename T, typename... TArgs>
+		void Replace(TArgs&&... args) {
 			ThrowIfSingletonTestFailed<T>();
 			if (Has<T>())
 				Remove<T>();
-			(*world->AddComponent<T>(entityID)) = val;
+			world->AddComponent<T>(entityID, std::forward<TArgs>(args)...);
 		}
 
 		/* Get pointer to T. 
@@ -45,11 +45,10 @@ namespace Resecs {
 		/* Add a T to the entity.
 		Will throw exception if T already exists.
 		*/
-		template<typename T>
-		T* Add(T val) {
+		template<typename T,typename... TArgs>
+		T* Add(TArgs&&... args) {
 			ThrowIfSingletonTestFailed<T>();
-			auto p = world->AddComponent<T>(entityID);
-			*p = val;
+			auto p = world->AddComponent<T>(entityID, std::forward<TArgs>(args)...);
 			return p;
 		}
 
@@ -57,9 +56,9 @@ namespace Resecs {
 		Will throw exception if T already exists.
 		*/
 		template<typename T>
-		T* Add() {
+		T* Add(T&& tval) {
 			ThrowIfSingletonTestFailed<T>();
-			auto p = world->AddComponent<T>(entityID);
+			auto p = world->AddComponent<T>(entityID, std::forward<T>(tval));
 			return p;
 		}
 

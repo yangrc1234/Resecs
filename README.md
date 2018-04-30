@@ -17,7 +17,7 @@ public:
 };  
 struct Velocity : public Component {
 public:
-	Velocity() = default;
+	//Velocity() = default;		the default constructor is not required now.
 	Velocity(float hor, float vert) {
 		this->hor = hor;
 		this->vert = vert;
@@ -123,3 +123,6 @@ while(true){
 
 ## Requirements
 This project is built in VS2015. I haven't tested on other platform, sorry for that.
+
+## History
+18/04/30 Updated component management, now the default constructor is not required anymore.

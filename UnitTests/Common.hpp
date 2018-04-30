@@ -56,3 +56,10 @@ public:
 	}
 	int val;
 };
+
+struct NoDefaultConstructorComponent : public Component {
+	int value;
+	NoDefaultConstructorComponent(int value) : value(value)
+	{
+	}
+};

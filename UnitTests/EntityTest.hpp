@@ -11,7 +11,9 @@ TEST(ComponentTest, AddComponentTest) {
 	entity.Add(PositionComponent(0, 0, 1));
 	ASSERT_TRUE(entity.Has<PositionComponent>());
 	ASSERT_TRUE(entity.Get<PositionComponent>()->val == PositionComponent(0, 0, 1).val);
-
+	
+	entity.Add<NoDefaultConstructorComponent>(1);
+	ASSERT_TRUE(entity.Get<NoDefaultConstructorComponent>()->value == 1);
 }
 
 TEST(ComponentTest, RemoveComponentTest) {

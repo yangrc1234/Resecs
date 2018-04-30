@@ -128,8 +128,8 @@ namespace Resecs {
 		}
 	private:
 		//Only friend class Entity use these.
-		template<typename T>
-		T* AddComponent(EntityID entity) {
+		template<typename T, typename... TArgs>
+		T* AddComponent(EntityID entity,TArgs&&... args) {
 			int compIndex = ConvertComponentTypeToIndex<T>();
 			if (!CheckEntityAlive(entity)) {
 				throw std::runtime_error("This entity is already destroyed!");
@@ -138,7 +138,7 @@ namespace Resecs {
 				throw std::runtime_error("This entity already has this component!");
 			}
 			auto cm = getComponentManager<T>();
-			cm->Create(entity.index);
+			cm->Create(entity.index, std::forward<TArgs>(args)...);
 			getComponentActivationStatus(entity, compIndex) = true;
 			OnComponentChanged.Invoke(ComponentEventArgs(
 				ComponentEventType::Added,
@@ -147,6 +147,7 @@ namespace Resecs {
 			));
 			return cm->Get(entity.index);
 		}
+
 		template<typename T>
 		T* GetComponent(EntityID entity) {
 			int compIndex = ConvertComponentTypeToIndex<T>();
