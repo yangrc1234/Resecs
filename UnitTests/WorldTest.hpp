@@ -92,13 +92,18 @@ TEST(WorldTest, SingletonTest) {
 	auto entity = testWorld.Create();
 	ASSERT_TRUE(entity.entityID.index == 1);	//index 0 should be occupied by singleton.
 
-
 	auto temp = testWorld.Add(SgComponent(1));
 	ASSERT_ANY_THROW(
 		testWorld.Add(SgComponent(1));
 	);
 
 	ASSERT_TRUE(testWorld.Get<SgComponent>() == temp);
+
+	ASSERT_NO_THROW(
+		testWorld.Remove<SgComponent>();
+		testWorld.Add<SgComponent>(1);
+		testWorld.Replace(SgComponent(1));
+	);
 
 	testWorld.Remove<SgComponent>();
 	ASSERT_TRUE(!testWorld.Has<SgComponent>());

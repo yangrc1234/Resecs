@@ -166,19 +166,31 @@ namespace Resecs {
 		/*Singleton component manipulation*/
 	public:
 		template<typename T>
-		T* Add(T val) {
+		T* Add(T&& val) {
 			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
-			return singletonEntity.Add<T>(val);
+			return singletonEntity.Add<T>(std::forward<T>(val));
 		}
+
+		template<typename T,typename... TArgs>
+		T* Add(TArgs&&... args) {
+			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
+			return singletonEntity.Add<T>(std::forward<TArgs>(args)...);
+		}
+
 		template<typename T>
 		T* Get() {
 			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
 			return singletonEntity.Get<T>();
 		}
 		template<typename T>
-		T* Replace(T val) {
+		void Replace(T&& val) {
 			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
-			return singletonEntity.Replace<T>(val);
+			singletonEntity.Replace<T>(std::forward<T>(val));
+		}
+		template<typename T, typename... TArgs>
+		void Replace(TArgs&&... args) {
+			static_assert(std::is_base_of<ISingletonComponent, T>::value, "Can't manipulate a non-singleton component directly to World");
+			return singletonEntity.Replace<T>(std::forward<TArgs>(args)...);
 		}
 		template<typename T>
 		bool Has() {

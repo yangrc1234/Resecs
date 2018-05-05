@@ -50,7 +50,7 @@ public:
 	{
 
 	}
-	SgComponent(int val) : val(val)
+	explicit SgComponent(int val) : val(val)
 	{
 
 	}
